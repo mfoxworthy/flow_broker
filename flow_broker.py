@@ -3,6 +3,7 @@ import socket
 import errno
 import os
 
+# TODO create logger functions
 
 def main():
     s_address = '/var/run/ulogd.sock'
@@ -31,14 +32,20 @@ def main():
 
     s.listen()
     sc.listen()
-    # Wait for a connections
+
+    # Wait for a connection drom ulogd
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
-    print("Accepted connection from: " + ulog_addr)
+    print("Accepted connection from: ulod")
+
+    # Wait for a connection drom l7stats
     print("Waiting for a connection on stats")
     stats_conn, stats_addr = sc.accept()
-    print("Accepted connection from: " + stats_addr)
+    print("Accepted connection from: l7stats")
+
+    # Create file handler for ulogd json strings
     fh = u_conn.makefile()
+
     while True:
 
         try:
@@ -71,5 +78,4 @@ def main():
 
 
 if __name__ == "__main__":
-    while
     main()
