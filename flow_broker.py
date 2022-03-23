@@ -36,9 +36,9 @@ def broker_service():
     # Wait for a connection drom ulogd
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
-    print("Accepted connection from: ulod")
+    print("Accepted connection from: ulogd")
 
-    # Wait for a connection drom l7stats
+    # Wait for a connection from l7stats
     print("Waiting for a connection on stats")
     stats_conn, stats_addr = sc.accept()
     print("Accepted connection from: l7stats")
