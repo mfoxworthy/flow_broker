@@ -1,6 +1,6 @@
 import json
 import socket
-import sys
+import errno
 import os
 
 
@@ -29,9 +29,9 @@ def main():
     print("Starting up on {}".format(sc_address))
     sc.bind(sc_address)
 
-    s.listen(1)
-    sc.listen(1)
-    # Waits for a connections
+    s.listen()
+    sc.listen()
+    # Wait for a connections
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
     print("Accepted connection from: " + ulog_addr)
@@ -40,7 +40,15 @@ def main():
     print("Accepted connection from: " + stats_addr)
     fh = u_conn.makefile()
     while True:
-        data = fh.readline()
+
+        try:
+            data = fh.readline()
+        except:
+            break
+
+        if not data:
+            break
+
         jd = json.loads(data)
         if jd["ip.protocol"] == 1:
             continue
@@ -52,10 +60,16 @@ def main():
         s_data = json.dumps(s_data)
         s_data = s_data + "\n"
         # print(s_data)
-        stats_conn.sendall(str(s_data).encode("utf-8"))
-    u_conn.close()
-    stats_conn.close()
+        try:
+            stats_conn.sendall(str(s_data).encode("utf-8"))
+        except IOError as e:
+            if e.errno == errno.EPIPE:
+                stats_conn.close()
+                u_conn.close()
+                break
+    main()
 
 
 if __name__ == "__main__":
+    while
     main()
