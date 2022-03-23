@@ -74,7 +74,7 @@ def broker_service():
                 stats_conn.close()
                 u_conn.close()
                 break
-    main()
+    broker_service()
 
 
 if __name__ == "__main__":
