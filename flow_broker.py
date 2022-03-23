@@ -5,7 +5,7 @@ import os
 
 # TODO create logger functions
 
-def main():
+def broker_service():
     s_address = '/var/run/ulogd.sock'
     sc_address = '/var/run/l7stats.sock'
 
@@ -78,4 +78,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    broker_service()
