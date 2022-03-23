@@ -29,15 +29,15 @@ def main():
     print("Starting up on {}".format(sc_address))
     sc.bind(sc_address)
 
-    """listen waits for the client to approach
-       the server to make a connection"""
     s.listen(1)
     sc.listen(1)
     # Waits for a connections
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
+    print("Accepted connection from: " + ulog_addr)
     print("Waiting for a connection on stats")
     stats_conn, stats_addr = sc.accept()
+    print("Accepted connection from: " + stats_addr)
     fh = u_conn.makefile()
     while True:
         data = fh.readline()
