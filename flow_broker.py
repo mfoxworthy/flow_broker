@@ -33,7 +33,7 @@ def main():
        the server to make a connection"""
     s.listen(1)
     sc.listen(1)
-    # Waits for a connection
+    # Waits for a connections
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
     print("Waiting for a connection on stats")
