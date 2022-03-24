@@ -33,8 +33,7 @@ class U_Server:
         return self.fh
 
     def read(self):
-        jd = None
-
+        jd = {"key": "value"}
         fd_read = [self.fh]
         fd_write = []
 
@@ -44,6 +43,7 @@ class U_Server:
             return jd
 
         try:
+            print("reading data")
             data = self.fh.readline()
         except:
             return None
@@ -54,3 +54,7 @@ class U_Server:
         jd = json.loads(data)
 
         return jd
+
+    def close(self):
+        if self.conn is not None:
+            self.conn.close()
