@@ -1,5 +1,4 @@
 import json
-import select
 import socket
 import errno
 import os
