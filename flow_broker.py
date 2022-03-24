@@ -9,6 +9,7 @@ from u_server import U_Server
 
 def broker_service():
     s_address = '/var/run/ulogd_pkt.sock'
+
     sc_address = '/var/run/l7stats.sock'
 
     # Make sure the socket does not alredy exist
@@ -24,6 +25,7 @@ def broker_service():
     # create a UDS socket
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sc = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    f = socket.socket()
 
     # Bind the socket to the port
 
@@ -31,14 +33,20 @@ def broker_service():
     s.bind(s_address)
     print("Starting up on {}".format(sc_address))
     sc.bind(sc_address)
+    f.bind(('127.0.0.1', 6000))
 
     s.listen()
     sc.listen()
+    f.listen()
 
     # Wait for a connection drom ulogd
     print("Waiting for a connection on ulogd")
     u_conn, ulog_addr = s.accept()
     print("Accepted connection from: ulogd")
+
+    print("Waiting for a connection on ulogd_p")
+    f_conn, ulogp_addr = f.accept()
+    print("Accepted connection from: ulogd_p")
 
     # Wait for a connection from l7stats
     print("Waiting for a connection on stats")
@@ -47,22 +55,19 @@ def broker_service():
     tmp = dict()
     # Create file handler for ulogd json strings
     fh = u_conn.makefile()
+    fh_f = f_conn.makefile()
 
     while True:
-        with open("/tmp/ulogd_flows.log") as f:
+
             try:
-                print("Step 1")
-                uf_jd = f.readlines()
-                if len(uf_jd):
-                    uf_jd = uf_jd[-1]
-                uf_jd = json.loads(str(uf_jd))
-                if uf_jd == tmp:
-                    continue
-                else:
-                    tmp = uf_jd
-            except Exception as e:
-                print(e)
+                data_f = fh_f.readline()
+            except:
                 break
+
+            if not data_f:
+                break
+
+            uf_jd = json.loads(data_f)
             if uf_jd is None:
                 print("We have no data")
                 continue
@@ -107,8 +112,8 @@ def broker_service():
                 stats_conn.sendall(str(s_data).encode("utf-8"))
             except IOError as e:
                 if e.errno == errno.EPIPE:
-                    stats_conn.close()
-                    u_conn.close()
+                    #stats_conn.close()
+                    #u_conn.close()
                     break
 
     stats_conn.close()
