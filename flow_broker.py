@@ -2,16 +2,33 @@ import json
 import socket
 import errno
 import os
-from multiprocessing import Process, RLock
-from u_server import uServer
+from queue import Queue
+from threading import Thread, RLock
 
 lock = RLock()
-s_server = uServer()
+
 
 # TODO create logger functions
+def server(sq):
+    path = "/var/run/l7stats.sock"
+    try:
+        os.unlink(path)
+    except OSError:
+        if os.path.exists(path):
+            raise
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
+    print("Starting up on {}".format(path))
+    s.bind(path)
+    s.listen()
+
+    conn, addr = s.accept()
+    while True:
+        msg = sq.get()
+        conn.sendall(msg)
 
 
-def p_thread():
+def p_thread(sq):
     p = socket.socket()
 
     print("Starting up on {}".format(p))
@@ -48,7 +65,7 @@ def p_thread():
         # print(s_data)
         try:
             with lock:
-                s_server.send((str(p_data).encode("utf-8")))
+                sq.put((str(p_data).encode("utf-8")))
         except IOError as e:
             if e.errno == errno.EPIPE:
                 break
@@ -56,7 +73,7 @@ def p_thread():
     # p_stats.close()
 
 
-def f_thread():
+def f_thread(sq):
     f = socket.socket()
 
     print("Starting up on {}".format(f))
@@ -96,7 +113,7 @@ def f_thread():
             f_data = f_data + "\n"
             try:
                 with lock:
-                    s_server.send((str(f_data).encode("utf-8")))
+                    sq.put((str(f_data).encode("utf-8")))
             except IOError as e:
                 if e.errno == errno.EPIPE:
                     break
@@ -104,9 +121,17 @@ def f_thread():
 
 
 if __name__ == "__main__":
-    s_server.server("/var/run/l7stats.sock")
-    p_proc = Process(target=p_thread)
-    f_proc = Process(target=f_thread)
 
+    q = Queue(maxsize=0)
+
+    s_proc = Thread(target=server, args=(q, ), daemon=True)
+    p_proc = Thread(target=p_thread, args=(q, ))
+    f_proc = Thread(target=f_thread, args=(q, ))
+
+    s_proc.start()
     p_proc.start()
     f_proc.start()
+
+
+
+
