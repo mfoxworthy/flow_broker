@@ -7,8 +7,9 @@ class uServer:
     s = None
     conn = None
 
-    def server(self, path):
+    def server(self, path, sq):
         self.path = path
+        self.sq = sq
 
         try:
             os.unlink(path)
@@ -22,6 +23,10 @@ class uServer:
         self.s.listen()
 
         self.conn, addr = self.s.accept()
+        while True:
+            msg = sq.get()
+            self.conn.sendall(msg)
+
 
     def send(self, msg):
         self.conn.sendall(msg)
