@@ -2,34 +2,13 @@ import json
 import socket
 import errno
 import os
-import threading
+from multiprocessing import Process, RLock
+from u_server import uServer
 
-from multiprocessing import Process, Pipe, RLock
 lock = RLock()
-
-sc_address = '/var/run/l7stats.sock'
-try:
-    os.unlink(sc_address)
-except OSError:
-    if os.path.exists(sc_address):
-        raise
-    sc = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    print("Starting up on {}".format(sc_address))
-    sc.bind(sc_address)
-
-    sc.listen(5)
-
-    # Wait for a connection from l7stats
-    print("Waiting for a connection on stats")
-    stats_conn, stats_addr = sc.accept()
-    stats_conn.setblocking(0)
-    print("Accepted connection from: l7stats")
-
+s_server = uServer()
 
 # TODO create logger functions
-
-def stats_thread(msg):
-    stats_conn.sendall(msg)
 
 
 def p_thread():
@@ -44,12 +23,6 @@ def p_thread():
     print("Waiting for a connection on ulogd_p")
     p_conn, ulog_addr = p.accept()
     print("Accepted connection from: ulogd_p")
-
-    '''
-    p_stats = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    stats_address = "/var/run/l7stats.sock"
-    p_stats.connect(stats_address)
-    '''
 
     p_fh = p_conn.makefile()
 
@@ -75,7 +48,7 @@ def p_thread():
         # print(s_data)
         try:
             with lock:
-                stats_thread((str(p_data).encode("utf-8")))
+                s_server.send((str(p_data).encode("utf-8")))
         except IOError as e:
             if e.errno == errno.EPIPE:
                 break
@@ -94,12 +67,6 @@ def f_thread():
     print("Waiting for a connection on ulogd_f")
     f_conn, ulogp_addr = f.accept()
     print("Accepted connection from: ulogd_f")
-
-    '''
-    f_stats = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    stats_address = "/var/run/l7stats.sock"
-    f_stats.connect(stats_address)
-    '''
 
     f_fh = f_conn.makefile()
 
@@ -129,7 +96,7 @@ def f_thread():
             f_data = f_data + "\n"
             try:
                 with lock:
-                    stats_thread((str(f_data).encode("utf-8")))
+                    s_server.send((str(f_data).encode("utf-8")))
             except IOError as e:
                 if e.errno == errno.EPIPE:
                     break
@@ -137,10 +104,9 @@ def f_thread():
 
 
 if __name__ == "__main__":
-
+    s_server.server("/var/run/l7stats.sock")
     p_proc = Process(target=p_thread)
     f_proc = Process(target=f_thread)
 
     p_proc.start()
     f_proc.start()
-

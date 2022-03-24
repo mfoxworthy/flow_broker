@@ -1,16 +1,11 @@
-import json
-import select
 import socket
-import errno
 import os
 
 
-class U_Server:
+class uServer:
     path = None
     s = None
     conn = None
-    fh = None
-
 
     def server(self, path):
         self.path = path
@@ -28,32 +23,8 @@ class U_Server:
 
         self.conn, addr = self.s.accept()
 
-        self.fh = self.conn.makefile()
-
-        return self.fh
-
-    def read(self):
-        jd = {"key": "value"}
-        fd_read = [self.fh]
-        fd_write = []
-
-        rd, wr, ex = select.select(fd_read, fd_write, fd_read, 1.0)
-
-        if not len(rd):
-            return jd
-
-        try:
-            print("reading data")
-            data = self.fh.readline()
-        except:
-            return None
-
-        if not data:
-            return None
-
-        jd = json.loads(data)
-
-        return jd
+    def send(self, msg):
+        self.conn.sendall(msg)
 
     def close(self):
         if self.conn is not None:
