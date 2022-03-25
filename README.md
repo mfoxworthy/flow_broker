@@ -9,16 +9,8 @@ Install these on your cirrus.
 
 ulogd confoguration file in in the repo.
 
-
-IPtables rules
-
-iptables -t raw -I PREROUTING 1 -i 3g-wwan -j NFLOG --nflog-group 2 --nflog-prefix ip2 --nflog-size 128
-
-iptables -t raw -I PREROUTING 2 -i eth1 -j NFLOG --nflog-group 2 --nflog-prefix ip2 --nflog-size 128
-
-iptables -t raw -A OUTPUT -o 3g-wwan -j NFLOG --nflog-group 2 --nflog-prefix ip2 --nflog-size 128
-
-iptables -t raw -A OUTPUT -o eth1 -j NFLOG --nflog-group 2 --nflog-prefix ip2 --nflog-size 128
+firewall.user file is in repo. Place that file in /etc/firewall.user and restart your firewall.
 
 
-Add those to the custom rules and restart the firewall.
+
+
