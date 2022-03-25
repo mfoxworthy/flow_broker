@@ -10,6 +10,15 @@ from syslog import \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
 
 
+def print_pkt(pkt):
+    print_pkt_data = (str(pkt["src_ip"]) + " " + str(pkt["src_port"]) + " " +
+                      str(pkt["dest_ip"]) + " " + str(pkt["dest_port"]) + " " + str(pkt["ip.totlen"]))
+    print(print_pkt_data)
+
+
+debug = 0
+
+
 def server(sq):
     path = "/var/run/l7stats.sock"
     try:
@@ -79,6 +88,8 @@ def pkt_thread(sq):
                 continue
             try:
                 if p_jd["oob.out"] != "":
+                    if debug == 1:
+                        print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
                               str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
                     h_data = hashlib.sha1(h_data.encode())
@@ -86,6 +97,8 @@ def pkt_thread(sq):
                     p_data = {str(h_data): {"event": "pkt", "iface": p_jd["oob.out"], "t_bytes": p_jd["ip.totlen"]}}
 
                 else:
+                    if debug == 1:
+                        print_pkt(p_jd)
                     h_data = (str(p_jd["dest_ip"]) + str(p_jd["dest_port"]) +
                               str(p_jd["src_ip"]) + str(p_jd["src_port"])).replace(".", "")
                     h_data = hashlib.sha1(h_data.encode())
