@@ -3,9 +3,7 @@ import socket
 import errno
 import os
 from queue import Queue
-from threading import Thread, RLock
-
-lock = RLock()
+from threading import Thread
 
 
 # TODO create logger functions
@@ -21,14 +19,28 @@ def server(sq):
     print("Starting up on {}".format(path))
     s.bind(path)
     s.listen()
-
-    conn, addr = s.accept()
+    disconn = True
     while True:
-        msg = sq.get()
-        conn.sendall(msg)
+        if disconn:
+            print("Waiting for a connection on stats")
+            conn, addr = s.accept()
+            print("Accepted connection on stats")
+            disconn = False
+        while True:
+            msg = sq.get()
+            if not len(msg):
+                continue
+            try:
+                conn.sendall(msg)
+            except Exception as e:
+                print("Could not send data")
+                disconn = True
+                break
+        conn.close()
 
 
-def p_thread(sq):
+def pkt_thread(sq):
+    disconn = True
     p = socket.socket()
 
     print("Starting up on {}".format(p))
@@ -36,44 +48,51 @@ def p_thread(sq):
 
     p.listen()
 
-    # Wait for a connection from ulogd
-    print("Waiting for a connection on ulogd_p")
-    p_conn, ulog_addr = p.accept()
-    print("Accepted connection from: ulogd_p")
-
-    p_fh = p_conn.makefile()
-
     while True:
-        try:
-            data = p_fh.readline()
-        except:
-            break
+        if disconn:
+            print("Waiting for a connection on ulogd_p")
+            p_conn, ulog_addr = p.accept()
+            print("Accepted connection from: ulogd_p")
+            try:
+                p_fh = p_conn.makefile()
+            except Exception as e:
+                print("Cannot read socket: Restarting")
+            disconn = True
+        while True:
+            try:
+                p_data = p_fh.readline()
+            except:
+                p_conn.close()
+                disconn = True
 
-        if not data:
-            break
-
-        p_jd = json.loads(data)
-        if p_jd["ip.protocol"] == 1:
-            continue
-        elif "src_port" not in p_jd:
-            continue
-        p_data = {"src_ip": p_jd["src_ip"], "src_port": p_jd["src_port"], "dest_ip": p_jd["dest_ip"],
-                  "dest_port": p_jd["dest_port"],
-                  "oob.in": p_jd["oob.in"], "oob.out": p_jd["oob.out"], "bytes": p_jd["ip.totlen"]}
-        p_data = json.dumps(p_data)
-        p_data = p_data + "\n"
-        # print(s_data)
-        try:
-            with lock:
-                sq.put((str(p_data).encode("utf-8")))
-        except IOError as e:
-            if e.errno == errno.EPIPE:
+            if not p_data:
                 break
 
-    # p_stats.close()
+            p_jd = json.loads(p_data)
+            if p_jd["ip.protocol"] == 1:
+                continue
+            elif "src_port" not in p_jd:
+                continue
+            try:
+                p_data = {"src_ip": p_jd["src_ip"], "src_port": p_jd["src_port"], "dest_ip": p_jd["dest_ip"],
+                          "dest_port": p_jd["dest_port"],
+                          "oob.in": p_jd["oob.in"], "oob.out": p_jd["oob.out"], "bytes": p_jd["ip.totlen"]}
+            except Exception as e:
+                p_data = {"KeyError": e}
+                print("Must have a KeyError with: ", e)
+                continue
+            p_data = json.dumps(p_data)
+            p_data = p_data + "\n"
+            # print(s_data)
+            try:
+                sq.put((str(p_data).encode("utf-8")))
+            except IOError as e:
+                if e.errno == errno.EPIPE:
+                    break
 
 
-def f_thread(sq):
+def flow_thread(sq):
+    disconn = True
     f = socket.socket()
 
     print("Starting up on {}".format(f))
@@ -81,57 +100,60 @@ def f_thread(sq):
 
     f.listen()
 
-    print("Waiting for a connection on ulogd_f")
-    f_conn, ulogp_addr = f.accept()
-    print("Accepted connection from: ulogd_f")
-
-    f_fh = f_conn.makefile()
-
     while True:
-
-        try:
-            f_data = f_fh.readline()
-        except:
-            break
-        if not f_data:
-            continue
-
-        f_jd = json.loads(f_data)
-        if f_jd is None:
-            print("We have no data")
-            continue
-        if "orig.ip.protocol" not in f_jd.keys():
-            print("Still no data")
-            continue
-        if f_jd["orig.ip.protocol"] == 1:
-            continue
-        else:
-            f_data = {"l_ip": f_jd["reply.ip.daddr.str"], "l_port": f_jd["reply.l4.dport"],
-                      "r_ip": f_jd["reply.ip.saddr.str"],
-                      "r_port": f_jd["reply.l4.sport"], "purge": 1}
-            f_data = json.dumps(f_data)
-            f_data = f_data + "\n"
+        if disconn:
+            print("Waiting for a connection on ulogd_f")
+            f_conn, ulog_addr = f.accept()
+            print("Accepted connection from: ulogd_f")
             try:
-                with lock:
+                f_fh = f_conn.makefile()
+            except Exception as e:
+                print("Cannot read socket: Restarting")
+            disconn = True
+        while True:
+            try:
+                f_data = f_fh.readline()
+            except:
+                f_conn.close()
+                disconn = True
+
+            if not f_data:
+                break
+
+            f_jd = json.loads(f_data)
+            if f_jd is None:
+                print("We have no data")
+                continue
+            if "orig.ip.protocol" not in f_jd.keys():
+                print("Still no data")
+                continue
+            if f_jd["orig.ip.protocol"] == 1:
+                continue
+            else:
+                try:
+                    f_data = {"l_ip": f_jd["reply.ip.daddr.str"], "l_port": f_jd["reply.l4.dport"],
+                              "r_ip": f_jd["reply.ip.saddr.str"],
+                              "r_port": f_jd["reply.l4.sport"], "purge": 1}
+                except Exception as e:
+                    f_data = {"KeyError": e}
+                    print("Must have a KeyError with: ", e)
+                    continue
+                f_data = json.dumps(f_data)
+                f_data = f_data + "\n"
+                try:
                     sq.put((str(f_data).encode("utf-8")))
-            except IOError as e:
-                if e.errno == errno.EPIPE:
-                    break
-    # f_stats.close()
+                except IOError as e:
+                    if e.errno == errno.EPIPE:
+                        break
 
 
 if __name__ == "__main__":
-
     q = Queue(maxsize=0)
 
-    s_proc = Thread(target=server, args=(q, ), daemon=True)
-    p_proc = Thread(target=p_thread, args=(q, ))
-    f_proc = Thread(target=f_thread, args=(q, ))
+    s_proc = Thread(target=server, args=(q,), daemon=True)
+    p_proc = Thread(target=pkt_thread, args=(q,))
+    f_proc = Thread(target=flow_thread, args=(q,))
 
     s_proc.start()
     p_proc.start()
     f_proc.start()
-
-
-
-
