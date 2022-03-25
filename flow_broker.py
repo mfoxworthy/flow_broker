@@ -77,9 +77,12 @@ def pkt_thread(sq):
             elif "src_port" not in p_jd:
                 continue
             try:
-                p_data = {"src_ip": p_jd["src_ip"], "src_port": p_jd["src_port"], "dest_ip": p_jd["dest_ip"],
-                          "dest_port": p_jd["dest_port"],
-                          "oob.in": p_jd["oob.in"], "oob.out": p_jd["oob.out"], "bytes": p_jd["ip.totlen"]}
+                if p_jd["oob.out"] != "":
+                    p_data = {"l_ip": p_jd["src_ip"], "l_port": p_jd["src_port"], "r_ip": p_jd["dest_ip"],
+                              "r_port": p_jd["dest_port"], "iface": p_jd["oob.out"], "t_bytes": p_jd["ip.totlen"]}
+                else:
+                    p_data = {"l_ip": p_jd["dest_ip"], "l_port": p_jd["dest_port"], "r_ip": p_jd["src_ip"],
+                              "r_port": p_jd["src_port"], "iface": p_jd["oob.in"], "r_bytes": p_jd["ip.totlen"]}
             except Exception as e:
                 p_data = {"KeyError": e}
                 syslog(LOG_ERR, f"Must have a KeyError with: {e}")
