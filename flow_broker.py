@@ -64,7 +64,8 @@ def pkt_thread(sq):
         while True:
             try:
                 p_data = p_fh.readline()
-            except:
+            except Exception as e:
+                syslog(LOG_ERR, f"Lost connection to packet socket: {e}")
                 p_conn.close()
                 disconn = True
 
@@ -125,7 +126,8 @@ def flow_thread(sq):
         while True:
             try:
                 f_data = f_fh.readline()
-            except:
+                except Exception as e:
+                syslog(LOG_ERR, f"Lost connection to flow socket: {e}")
                 f_conn.close()
                 disconn = True
 
