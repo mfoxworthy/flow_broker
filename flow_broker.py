@@ -3,9 +3,7 @@ import socket
 import errno
 import os
 from queue import Queue
-from threading import Thread, RLock
-
-lock = RLock()
+from threading import Thread
 
 
 # TODO create logger functions
@@ -24,7 +22,9 @@ def server(sq):
     disconn = True
     while True:
         if disconn:
+            print("Waiting for a connection on stats")
             conn, addr = s.accept()
+            print("Accepted connection on stats")
             disconn = False
         while True:
             msg = sq.get()
@@ -37,7 +37,6 @@ def server(sq):
                 disconn = True
                 break
         conn.close()
-
 
 
 def pkt_thread(sq):
@@ -74,9 +73,14 @@ def pkt_thread(sq):
                 continue
             elif "src_port" not in p_jd:
                 continue
-            p_data = {"src_ip": p_jd["src_ip"], "src_port": p_jd["src_port"], "dest_ip": p_jd["dest_ip"],
-                      "dest_port": p_jd["dest_port"],
-                      "oob.in": p_jd["oob.in"], "oob.out": p_jd["oob.out"], "bytes": p_jd["ip.totlen"]}
+            try:
+                p_data = {"src_ip": p_jd["src_ip"], "src_port": p_jd["src_port"], "dest_ip": p_jd["dest_ip"],
+                          "dest_port": p_jd["dest_port"],
+                          "oob.in": p_jd["oob.in"], "oob.out": p_jd["oob.out"], "bytes": p_jd["ip.totlen"]}
+            except Exception as e:
+                p_data = {"KeyError": e}
+                print("Must have a KeyError with: ", e)
+                continue
             p_data = json.dumps(p_data)
             p_data = p_data + "\n"
             # print(s_data)
@@ -126,9 +130,14 @@ def flow_thread(sq):
             if f_jd["orig.ip.protocol"] == 1:
                 continue
             else:
-                f_data = {"l_ip": f_jd["reply.ip.daddr.str"], "l_port": f_jd["reply.l4.dport"],
-                          "r_ip": f_jd["reply.ip.saddr.str"],
-                          "r_port": f_jd["reply.l4.sport"], "purge": 1}
+                try:
+                    f_data = {"l_ip": f_jd["reply.ip.daddr.str"], "l_port": f_jd["reply.l4.dport"],
+                              "r_ip": f_jd["reply.ip.saddr.str"],
+                              "r_port": f_jd["reply.l4.sport"], "purge": 1}
+                except Exception as e:
+                    f_data = {"KeyError": e}
+                    print("Must have a KeyError with: ", e)
+                    continue
                 f_data = json.dumps(f_data)
                 f_data = f_data + "\n"
                 try:
@@ -139,17 +148,12 @@ def flow_thread(sq):
 
 
 if __name__ == "__main__":
-
     q = Queue(maxsize=0)
 
-    s_proc = Thread(target=server, args=(q, ), daemon=True)
-    p_proc = Thread(target=pkt_thread, args=(q, ))
-    f_proc = Thread(target=flow_thread, args=(q, ))
+    s_proc = Thread(target=server, args=(q,), daemon=True)
+    p_proc = Thread(target=pkt_thread, args=(q,))
+    f_proc = Thread(target=flow_thread, args=(q,))
 
     s_proc.start()
     p_proc.start()
     f_proc.start()
-
-
-
-
