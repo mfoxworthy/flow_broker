@@ -1,5 +1,5 @@
 # flow_broker
-ulogd to uds flow broker
+ulogd to uds flow and packet broker. It pulls NFCT and NFLOG data out of netfilter, hashes it and sends it out the uds for consumption. For now this application is specific to netifyd but soon will be expanded as a plugable architecture.
 
 Install these on your cirrus.
 ![Screen Shot 2022-03-22 at 4 40 55 PM](https://user-images.githubusercontent.com/8184748/159594564-18a09913-c692-4f3c-81fc-3b99821c0ca8.png)
