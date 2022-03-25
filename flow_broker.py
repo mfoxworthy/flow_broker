@@ -126,7 +126,7 @@ def flow_thread(sq):
         while True:
             try:
                 f_data = f_fh.readline()
-                except Exception as e:
+            except Exception as e:
                 syslog(LOG_ERR, f"Lost connection to flow socket: {e}")
                 f_conn.close()
                 disconn = True
