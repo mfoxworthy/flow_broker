@@ -4,6 +4,7 @@ import errno
 import os
 from queue import Queue
 from threading import Thread
+import hashlib
 from syslog import \
     openlog, syslog, LOG_PID, LOG_PERROR, LOG_DAEMON, \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
@@ -50,7 +51,6 @@ def pkt_thread(sq):
     p.bind(('127.0.0.1', 6001))
 
     p.listen()
-
     while True:
         if disconn:
             syslog(LOG_INFO, f"Waiting for a connection on {p}")
@@ -78,18 +78,24 @@ def pkt_thread(sq):
                 continue
             try:
                 if p_jd["oob.out"] != "":
-                    p_data = {"l_ip": p_jd["src_ip"], "l_port": p_jd["src_port"], "r_ip": p_jd["dest_ip"],
-                              "r_port": p_jd["dest_port"], "iface": p_jd["oob.out"], "t_bytes": p_jd["ip.totlen"]}
+                    h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
+                              str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
+                    h_data = hashlib.sha1(h_data.encode())
+                    h_data = h_data.hexdigest()
+                    p_data = {str(h_data): {"event": "pkt", "iface": p_jd["oob.out"], "t_bytes": p_jd["ip.totlen"]}}
+
                 else:
-                    p_data = {"l_ip": p_jd["dest_ip"], "l_port": p_jd["dest_port"], "r_ip": p_jd["src_ip"],
-                              "r_port": p_jd["src_port"], "iface": p_jd["oob.in"], "r_bytes": p_jd["ip.totlen"]}
+                    h_data = (str(p_jd["dest_ip"]) + str(p_jd["dest_port"]) +
+                              str(p_jd["src_ip"]) + str(p_jd["src_port"])).replace(".", "")
+                    h_data = hashlib.sha1(h_data.encode())
+                    h_data = h_data.hexdigest()
+                    p_data = {str(h_data): {"event": "pkt", "iface": p_jd["oob.in"], "r_bytes": p_jd["ip.totlen"]}}
             except Exception as e:
                 p_data = {"KeyError": e}
                 syslog(LOG_ERR, f"Must have a KeyError with: {e}")
                 continue
             p_data = json.dumps(p_data)
             p_data = p_data + "\n"
-            # print(s_data)
             try:
                 sq.put((str(p_data).encode("utf-8")))
             except IOError as e:
@@ -137,9 +143,11 @@ def flow_thread(sq):
                 continue
             else:
                 try:
-                    f_data = {"l_ip": f_jd["reply.ip.daddr.str"], "l_port": f_jd["reply.l4.dport"],
-                              "r_ip": f_jd["reply.ip.saddr.str"],
-                              "r_port": f_jd["reply.l4.sport"], "purge": 1}
+                    h_data = (str(f_jd["reply.ip.daddr.str"]) + str(f_jd["reply.l4.dport"])
+                              + str(f_jd["reply.ip.saddr.str"]) + str(f_jd["reply.l4.sport"])).replace(".", "")
+                    h_data = hashlib.sha1(h_data.encode())
+                    h_data = h_data.hexdigest()
+                    f_data = {str(h_data): {"event:": "purge"}}
                 except Exception as e:
                     f_data = {"KeyError": e}
                     syslog(LOG_ERR, f"Must have a KeyError with: {e}")
