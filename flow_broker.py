@@ -9,14 +9,13 @@ from syslog import \
     openlog, syslog, LOG_PID, LOG_PERROR, LOG_DAEMON, \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
 
+debug = 0
+
 
 def print_pkt(pkt):
     print_pkt_data = (str(pkt["src_ip"]) + " " + str(pkt["src_port"]) + " " +
                       str(pkt["dest_ip"]) + " " + str(pkt["dest_port"]) + " " + str(pkt["ip.totlen"]))
     print(print_pkt_data)
-
-
-debug = 0
 
 
 def server(sq):
