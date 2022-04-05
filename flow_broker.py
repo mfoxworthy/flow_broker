@@ -57,7 +57,12 @@ def pkt_thread(sq):
 
     syslog(LOG_INFO, "Starting up on pkt socket")
     p.bind(('127.0.0.1', 6001))
-
+    rbytes = 0
+    tbytes = 0
+    rh_data = ""
+    th_data = ""
+    rret = 0
+    tret = 0
     p.listen()
     while True:
         if disconn:
@@ -91,26 +96,52 @@ def pkt_thread(sq):
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
                               str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
-                    h_data = hashlib.sha1(h_data.encode())
-                    h_data = h_data.hexdigest()
-                    p_data = {str(h_data): {"event": "pkt", "iface": p_jd["oob.out"], "t_bytes": p_jd["ip.totlen"]}}
+                    if th_data == h_data:
+                        tbytes += p_jd["ip.totlen"]
+                        tret = 1
+                        continue
+                    elif th_data != h_data and tret == 1:
+                        th_data = hashlib.sha1(th_data.encode())
+                        th_data = str(th_data.hexdigest())
+                        q_data = {th_data: {"event": "pkt", "iface": p_jd["oob.out"], "t_bytes": tbytes}}
+                        tbytes = p_jd["ip.totlen"]
+                        th_data = h_data
+                        tret = 1
+                    else:
+                        tbytes = p_jd["ip.totlen"]
+                        th_data = h_data
+                        tret = 1
+                        continue
 
                 else:
                     if debug == 1:
                         print_pkt(p_jd)
                     h_data = (str(p_jd["dest_ip"]) + str(p_jd["dest_port"]) +
                               str(p_jd["src_ip"]) + str(p_jd["src_port"])).replace(".", "")
-                    h_data = hashlib.sha1(h_data.encode())
-                    h_data = h_data.hexdigest()
-                    p_data = {str(h_data): {"event": "pkt", "iface": p_jd["oob.in"], "r_bytes": p_jd["ip.totlen"]}}
+                    if rh_data == h_data:
+                        rbytes += p_jd["ip.totlen"]
+                        rret = 1
+                        continue
+                    elif rh_data != h_data and rret == 1:
+                        rh_data = hashlib.sha1(rh_data.encode())
+                        rh_data = str(rh_data.hexdigest())
+                        q_data = {rh_data: {"event": "pkt", "iface": p_jd["oob.in"], "r_bytes": rbytes}}
+                        rbytes = p_jd["ip.totlen"]
+                        rh_data = h_data
+                        rret = 1
+                    else:
+                        rbytes = p_jd["ip.totlen"]
+                        rh_data = h_data
+                        rret = 1
+                        continue
             except Exception as e:
                 p_data = {"KeyError": e}
                 syslog(LOG_ERR, f"Must have a KeyError with: {e}")
                 continue
-            p_data = json.dumps(p_data)
-            p_data = p_data + "\n"
+            q_data = json.dumps(q_data)
+            q_data = q_data + "\n"
             try:
-                sq.put((str(p_data).encode("utf-8")))
+                sq.put((str(q_data).encode("utf-8")))
             except IOError as e:
                 if e.errno == errno.EPIPE:
                     break
