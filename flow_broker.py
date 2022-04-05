@@ -96,8 +96,6 @@ def pkt_thread(sq):
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
                               str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
-                    # h_data = hashlib.sha1(h_data.encode())
-                    # h_data = str(h_data.hexdigest())
                     if th_data == h_data:
                         tbytes += p_jd["ip.totlen"]
                         tret = 1
@@ -120,8 +118,6 @@ def pkt_thread(sq):
                         print_pkt(p_jd)
                     h_data = (str(p_jd["dest_ip"]) + str(p_jd["dest_port"]) +
                               str(p_jd["src_ip"]) + str(p_jd["src_port"])).replace(".", "")
-                    #h_data = hashlib.sha1(h_data.encode())
-                    #h_data = str(h_data.hexdigest())
                     if rh_data == h_data:
                         rbytes += p_jd["ip.totlen"]
                         rret = 1
