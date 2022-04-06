@@ -103,7 +103,7 @@ def pkt_thread(sq):
                     elif th_data != h_data and tret == 1:
                         th_data = hashlib.sha1(th_data.encode())
                         th_data = str(th_data.hexdigest())
-                        q_data = {"type": "flow_update_tx", "flow": {"digest": th_data, "iface": p_jd["oob.in"], "t_bytes": tbytes}}
+                        q_data = {"type": "flow_update_tx", "flow": {"digest": th_data, "iface": p_jd["oob.out"], "t_bytes": tbytes}}
                         tbytes = p_jd["ip.totlen"]
                         th_data = h_data
                         tret = 1
