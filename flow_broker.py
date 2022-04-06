@@ -103,7 +103,7 @@ def pkt_thread(sq):
                     elif th_data != h_data and tret == 1:
                         th_data = hashlib.sha1(th_data.encode())
                         th_data = str(th_data.hexdigest())
-                        q_data = {th_data: {"event": "pkt", "iface": p_jd["oob.out"], "t_bytes": tbytes}}
+                        q_data = {"type": "flow_update_tx", "flow": {"digest": rh_data, "iface": p_jd["oob.in"], "t_bytes": tbytes}}
                         tbytes = p_jd["ip.totlen"]
                         th_data = h_data
                         tret = 1
@@ -125,7 +125,7 @@ def pkt_thread(sq):
                     elif rh_data != h_data and rret == 1:
                         rh_data = hashlib.sha1(rh_data.encode())
                         rh_data = str(rh_data.hexdigest())
-                        q_data = {rh_data: {"event": "pkt", "iface": p_jd["oob.in"], "r_bytes": rbytes}}
+                        q_data = {"type": "flow_update_rx", "flow": {"digest": rh_data, "iface": p_jd["oob.in"], "r_bytes": rbytes}}
                         rbytes = p_jd["ip.totlen"]
                         rh_data = h_data
                         rret = 1
@@ -192,7 +192,7 @@ def flow_thread(sq):
                               + str(f_jd["reply.ip.saddr.str"]) + str(f_jd["reply.l4.sport"])).replace(".", "")
                     h_data = hashlib.sha1(h_data.encode())
                     h_data = h_data.hexdigest()
-                    f_data = {str(h_data): {"event:": "purge"}}
+                    f_data = {"type": "purge", "flow": {"digest": str(h_data)}}
                 except Exception as e:
                     f_data = {"KeyError": e}
                     syslog(LOG_ERR, f"Must have a KeyError with: {e}")
