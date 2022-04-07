@@ -8,6 +8,7 @@ import hashlib
 from syslog import \
     openlog, syslog, LOG_PID, LOG_PERROR, LOG_DAEMON, \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
+import netifaces as ni
 
 debug = 0
 
@@ -64,6 +65,7 @@ def pkt_thread(sq):
     rret = 0
     tret = 0
     p.listen()
+
     while True:
         if disconn:
             syslog(LOG_INFO, f"Waiting for a connection on {p}")
@@ -92,6 +94,10 @@ def pkt_thread(sq):
                 continue
             try:
                 if p_jd["oob.out"] != "":
+                    if p_jd["oob.out"] == "eth1":
+                        p_jd["src_ip"] = wan_ip
+                    elif p_jd["oob.out"] == "3g-wwan":
+                        p_jd["src_ip"] = wwan_ip
                     if debug == 1:
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
@@ -103,7 +109,8 @@ def pkt_thread(sq):
                     elif th_data != h_data and tret == 1:
                         th_data = hashlib.sha1(th_data.encode())
                         th_data = str(th_data.hexdigest())
-                        q_data = {"type": "flow_update_tx", "flow": {"digest": th_data, "iface": p_jd["oob.out"], "t_bytes": tbytes}}
+                        q_data = {"type": "flow_update_tx", "flow": {"digest": th_data,
+                                                                     "iface": p_jd["oob.out"], "t_bytes": tbytes}}
                         tbytes = p_jd["ip.totlen"]
                         th_data = h_data
                         tret = 1
@@ -125,7 +132,8 @@ def pkt_thread(sq):
                     elif rh_data != h_data and rret == 1:
                         rh_data = hashlib.sha1(rh_data.encode())
                         rh_data = str(rh_data.hexdigest())
-                        q_data = {"type": "flow_update_rx", "flow": {"digest": rh_data, "iface": p_jd["oob.in"], "r_bytes": rbytes}}
+                        q_data = {"type": "flow_update_rx", "flow": {"digest": rh_data,
+                                                                     "iface": p_jd["oob.in"], "r_bytes": rbytes}}
                         rbytes = p_jd["ip.totlen"]
                         rh_data = h_data
                         rret = 1
@@ -208,6 +216,8 @@ def flow_thread(sq):
 
 if __name__ == "__main__":
     q = Queue(maxsize=0)
+    wan_ip = ni.ifaddresses('eth1')[ni.AF_INET][0]['addr']
+    wwan_ip = ni.ifaddresses('3g-wwan')[ni.AF_INET][0]['addr']
 
     s_proc = Thread(target=server, args=(q,), daemon=True)
     p_proc = Thread(target=pkt_thread, args=(q,))
