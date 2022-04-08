@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=flow_broker
-PKG_SOURCE_VERSION:=542ca21c49f8768ed5cba2e738bfb6700ceb47ed
+PKG_SOURCE_VERSION:=a1bc49e919983aae03ea73a1f5044a1ef153a36d
 PKG_SOURCE_DATE=2022-04-08
 PKG_RELEASE:=v1.0
 PKG_MAINTAINER:=Michael Foxworthy <mfoxworthy@ipsquared.com>
@@ -17,7 +17,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/flow_broker
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=+ulogd +ulogd-mod-extra +ulogd-mod-json +ulogd-mod-nfct +ulogd-mod-nflog +python3-netifaces
+  DEPENDS:=+ulogd +ulogd-mod-extra +ulogd-mod-json +ulogd-mod-nfct +ulogd-mod-nflog +python3-netifaces +iptables-mod-nflog
   TITLE:=flow broker - Application to capture ulogd NFLOG and NFCT logs, format to JSON and send to a UDS.
   PKGARCH:=all
 endef
