@@ -8,9 +8,28 @@ import hashlib
 from syslog import \
     openlog, syslog, LOG_PID, LOG_PERROR, LOG_DAEMON, \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
-import netifaces as ni
+import ubus
+from uci import Uci
 
 debug = 0
+
+
+def get_config():
+    u_iface = u.get("flow_broker", "main", "ext_iface")
+    print(u_iface)
+    return u_iface
+
+
+def gen_int_dict(u_iface):
+    iface_dict = {}
+    ubus.connect("/var/run/ubus/ubus.sock")
+    for i in u_iface:
+        iface = "network.interface." + i
+        i_list = ubus.call(iface, "status", {})
+        i_dict = i_list[0]
+        iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
+    print(iface_dict)
+    return iface_dict
 
 
 def print_pkt(pkt):
@@ -52,7 +71,7 @@ def server(sq):
         conn.close()
 
 
-def pkt_thread(sq):
+def pkt_thread(sq, i):
     disconn = True
     p = socket.socket()
 
@@ -94,10 +113,7 @@ def pkt_thread(sq):
                 continue
             try:
                 if p_jd["oob.out"] != "":
-                    if p_jd["oob.out"] == "eth1":
-                        p_jd["src_ip"] = wan_ip
-                    elif p_jd["oob.out"] == "3g-wwan":
-                        p_jd["src_ip"] = wwan_ip
+                    p_jd["src_ip"] = i[p_jd["oob.out"]]
                     if debug == 1:
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
@@ -216,11 +232,11 @@ def flow_thread(sq):
 
 if __name__ == "__main__":
     q = Queue(maxsize=0)
-    wan_ip = ni.ifaddresses('eth1')[ni.AF_INET][0]['addr']
-    wwan_ip = ni.ifaddresses('3g-wwan')[ni.AF_INET][0]['addr']
-
+    u = Uci()
+    i_conf = get_config()
+    i_dict = gen_int_dict(i_conf)
     s_proc = Thread(target=server, args=(q,), daemon=True)
-    p_proc = Thread(target=pkt_thread, args=(q,))
+    p_proc = Thread(target=pkt_thread, args=(q, i_dict, ))
     f_proc = Thread(target=flow_thread, args=(q,))
     syslog(LOG_INFO, "Flow Broker Starting")
     s_proc.start()
