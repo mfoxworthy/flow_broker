@@ -15,9 +15,11 @@ debug = 0
 
 
 def get_config():
+    u = Uci()
     u_iface = u.get("flow_broker", "main", "ext_iface")
     print(u_iface)
-    return u_iface
+    d = gen_int_dict(u_iface)
+    return d
 
 
 def gen_int_dict(u_iface):
@@ -231,13 +233,14 @@ def flow_thread(sq):
 
 
 if __name__ == "__main__":
+
     q = Queue(maxsize=0)
-    u = Uci()
-    i_conf = get_config()
-    i_dict = gen_int_dict(i_conf)
+    i_dict = get_config()
+
     s_proc = Thread(target=server, args=(q,), daemon=True)
     p_proc = Thread(target=pkt_thread, args=(q, i_dict, ))
     f_proc = Thread(target=flow_thread, args=(q,))
+
     syslog(LOG_INFO, "Flow Broker Starting")
     s_proc.start()
     p_proc.start()
