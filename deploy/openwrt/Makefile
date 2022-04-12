@@ -36,9 +36,6 @@ define Package/flow_broker/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/deploy/openwrt/files/flow_broker.init  $(1)/etc/init.d/flow_broker
 
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/deploy/openwrt/files/firewall.user  $(1)/etc/firewall.user
-
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/deploy/openwrt/files/flow_broker.sh $(1)/usr/sbin
 
