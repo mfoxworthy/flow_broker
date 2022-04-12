@@ -113,7 +113,7 @@ def pkt_thread(sq, int):
             try:
                 if p_jd["oob.out"] != "":
                     p_jd["src_ip"] = int[p_jd["oob.out"]]
-                    if u.get("flow_broker", "main", "debug") == 1:
+                    if debug == 1:
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
                               str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
@@ -202,10 +202,10 @@ def flow_thread(sq):
 
             f_jd = json.loads(f_data)
             if f_jd is None:
-                syslog(LOG_DEBUG, "We have no data on f_jd")
+                syslog(LOG_ERR, "We have no data on f_jd")
                 continue
             if "orig.ip.protocol" not in f_jd.keys():
-                syslog(LOG_DEBUG, "Still no data in f_jd")
+                syslog(LOG_ERR, "Still no data in f_jd")
                 continue
             if f_jd["orig.ip.protocol"] == 1:
                 continue
@@ -235,6 +235,7 @@ if __name__ == "__main__":
     u = Uci()
 
     i_dict = get_config()
+    debug = u.get("flow_broker", "main", "debug")
 
     s_proc = Thread(target=server, args=(q,), daemon=True)
     p_proc = Thread(target=pkt_thread, args=(q, i_dict, ))
