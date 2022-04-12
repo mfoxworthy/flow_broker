@@ -11,7 +11,4 @@ if [ -z "$PYTHON" ]; then
     exit 1
 fi
 
-# Temporary workaround until OpenWrt start/stop fixed
-mkdir -p /var/run/flow_broker
-
 exec $PYTHON -Es /usr/share/flow_broker/flow_broker.py
