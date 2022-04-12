@@ -11,14 +11,12 @@ from syslog import \
 import ubus
 from uci import Uci
 
-debug = 0
-
 
 def get_config():
-    u = Uci()
     u_iface = u.get("flow_broker", "main", "ext_iface")
     print(u_iface)
     d = gen_int_dict(u_iface)
+    syslog(LOG_INFO, f"Using interfaces and IPs: {d}")
     return d
 
 
@@ -30,14 +28,13 @@ def gen_int_dict(u_iface):
         i_list = ubus.call(iface, "status", {})
         i_dict = i_list[0]
         iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
-    print(iface_dict)
     return iface_dict
 
 
 def print_pkt(pkt):
     print_pkt_data = (str(pkt["src_ip"]) + " " + str(pkt["src_port"]) + " " +
                       str(pkt["dest_ip"]) + " " + str(pkt["dest_port"]) + " " + str(pkt["ip.totlen"]))
-    print(print_pkt_data)
+    syslog(LOG_DEBUG, print_pkt_data)
 
 
 def server(sq):
@@ -73,7 +70,7 @@ def server(sq):
         conn.close()
 
 
-def pkt_thread(sq, i):
+def pkt_thread(sq, int):
     disconn = True
     p = socket.socket()
 
@@ -115,8 +112,8 @@ def pkt_thread(sq, i):
                 continue
             try:
                 if p_jd["oob.out"] != "":
-                    p_jd["src_ip"] = i[p_jd["oob.out"]]
-                    if debug == 1:
+                    p_jd["src_ip"] = int[p_jd["oob.out"]]
+                    if u.get("flow_broker", "main", "debug") == 1:
                         print_pkt(p_jd)
                     h_data = (str(p_jd["src_ip"]) + str(p_jd["src_port"]) +
                               str(p_jd["dest_ip"]) + str(p_jd["dest_port"])).replace(".", "")
@@ -235,6 +232,8 @@ def flow_thread(sq):
 if __name__ == "__main__":
 
     q = Queue(maxsize=0)
+    u = Uci()
+
     i_dict = get_config()
 
     s_proc = Thread(target=server, args=(q,), daemon=True)
@@ -242,6 +241,7 @@ if __name__ == "__main__":
     f_proc = Thread(target=flow_thread, args=(q,))
 
     syslog(LOG_INFO, "Flow Broker Starting")
+
     s_proc.start()
     p_proc.start()
     f_proc.start()
