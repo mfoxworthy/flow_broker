@@ -10,6 +10,7 @@ from syslog import \
     LOG_DEBUG, LOG_ERR, LOG_WARNING, LOG_INFO
 import ubus
 from uci import Uci
+import time
 
 
 def get_config():
@@ -25,9 +26,16 @@ def gen_int_dict(u_iface):
     ubus.connect("/var/run/ubus/ubus.sock")
     for i in u_iface:
         iface = "network.interface." + i
-        i_list = ubus.call(iface, "status", {})
-        i_dict = i_list[0]
-        iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
+        while True:
+            try:
+                i_list = ubus.call(iface, "status", {})
+                i_dict = i_list[0]
+                iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
+            except Exception as e:
+                syslog(LOG_WARNING, f"l3_device for {i} not available. Retry {e}")
+                time.sleep(5)
+                continue
+            break
     return iface_dict
 
 
@@ -246,3 +254,6 @@ if __name__ == "__main__":
     s_proc.start()
     p_proc.start()
     f_proc.start()
+
+    os.system("/etc/init.d/firewall restart")
+    os.system("/etc/init.d/ulogd restart")
