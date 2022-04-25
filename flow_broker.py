@@ -26,6 +26,7 @@ def gen_int_dict(u_iface):
     ubus.connect("/var/run/ubus/ubus.sock")
     for i in u_iface:
         iface = "network.interface." + i
+        count = 0
         while True:
             try:
                 i_list = ubus.call(iface, "status", {})
@@ -33,9 +34,12 @@ def gen_int_dict(u_iface):
                 iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
             except Exception as e:
                 syslog(LOG_WARNING, f"l3_device for {i} not available. Retry {e}")
+                count += 1
+                if count >= 3:
+                    syslog(LOG_ERR, f"Interface has no IP address: {i}")
+                    break
                 time.sleep(5)
                 continue
-            break
     return iface_dict
 
 
