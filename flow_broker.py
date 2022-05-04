@@ -246,6 +246,7 @@ def flow_thread(sq):
 
 
 if __name__ == "__main__":
+    time.sleep(10)
     q = Queue(maxsize=0)
     u = Uci()
 
