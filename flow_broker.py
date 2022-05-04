@@ -26,16 +26,24 @@ def gen_int_dict(u_iface):
     ubus.connect("/var/run/ubus/ubus.sock")
     for i in u_iface:
         iface = "network.interface." + i
-        while True:
+        counter = 1
+        while counter < 3:
             try:
                 i_list = ubus.call(iface, "status", {})
-                i_dict = i_list[0]
-                iface_dict.update({i_dict["l3_device"]: i_dict["ipv4-address"][0]["address"]})
             except Exception as e:
-                syslog(LOG_WARNING, f"l3_device for {i} not available. Retry {e}")
+                syslog(LOG_ERR, f"Interface {i} not not found.")
+                break
+            if_dict = i_list[0]
+            if "l3_device" in if_dict.keys():
+                iface_dict.update({if_dict["l3_device"]: if_dict["ipv4-address"][0]["address"]})
+                break
+            elif "l3_device" not in if_dict.keys():
+                syslog(LOG_WARNING, f"Interface {i} does not have an IP address. Try {counter}.")
+                counter += 1
                 time.sleep(5)
                 continue
-            break
+            elif counter == 3:
+                syslog(LOG_ERR, f"l3_device for {i} not available.")
     return iface_dict
 
 
@@ -238,7 +246,6 @@ def flow_thread(sq):
 
 
 if __name__ == "__main__":
-
     q = Queue(maxsize=0)
     u = Uci()
 
@@ -246,7 +253,7 @@ if __name__ == "__main__":
     debug = u.get("flow_broker", "main", "debug")
 
     s_proc = Thread(target=server, args=(q,), daemon=True)
-    p_proc = Thread(target=pkt_thread, args=(q, i_dict, ))
+    p_proc = Thread(target=pkt_thread, args=(q, i_dict,))
     f_proc = Thread(target=flow_thread, args=(q,))
 
     syslog(LOG_INFO, "Flow Broker Starting")
@@ -256,4 +263,6 @@ if __name__ == "__main__":
     f_proc.start()
 
     os.system("/etc/init.d/firewall restart")
+    syslog(LOG_INFO, "Firewall restarted")
     os.system("/etc/init.d/ulogd restart")
+    syslog(LOG_INFO, "Ulogd  restarted")
