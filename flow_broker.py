@@ -160,7 +160,7 @@ def pkt_thread(sq, int):
                         rh_data = hashlib.sha1(rh_data.encode())
                         rh_data = str(rh_data.hexdigest())
                         q_data = {"type": "flow_update_rx", "flow": {"digest": rh_data,
-                                                                     "iface": p_jd["oob.in"], "r_bytes": rbytes}}
+                                    "iface": p_jd["oob.in"], "r_bytes": rbytes}}
                         rbytes = p_jd["ip.totlen"]
                         rh_data = h_data
                         rret = 1
@@ -219,7 +219,7 @@ def flow_thread(sq):
             if "orig.ip.protocol" not in f_jd.keys():
                 syslog(LOG_ERR, "Still no data in f_jd")
                 continue
-            if f_jd["orig.ip.protocol"] == 1:
+            if f_jd["orig.ip.protocol"] == 1 or f_jd["orig.ip.protocol"] == 58:
                 continue
             else:
                 try:
