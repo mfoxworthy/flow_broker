@@ -230,7 +230,7 @@ def flow_thread(sq):
             if "orig.ip.protocol" not in f_jd.keys():
                 syslog(LOG_ERR, "Still no data in f_jd")
                 continue
-            if f_jd["orig.ip.protocol"] == 1 or p_jd["orig.ip.protocol"] == 58:
+            if f_jd["orig.ip.protocol"] == 1 or f_jd["orig.ip.protocol"] == 58:
                 continue
             else:
                 try:
