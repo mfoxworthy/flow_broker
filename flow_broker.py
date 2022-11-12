@@ -44,12 +44,18 @@ def gen_int_dict(u_iface):
                 continue
             elif counter == 3:
                 syslog(LOG_ERR, f"l3_device for {i} not available.")
+    try:
+        if u.get("flow_broker", "main", "464xlat") == "1":
+            iface_dict.update({u.get("flow_broker", "main", "464iface"): u.get("flow_broker", "main", "464ip")})
+    except Exception as e:
+        syslog(LOG_ERR, f"Failed to get xlat configuration.")
     return iface_dict
 
 
 def print_pkt(pkt):
-    print_pkt_data = (str(pkt["src_ip"]) + " " + str(pkt["src_port"]) + " " +
-                      str(pkt["dest_ip"]) + " " + str(pkt["dest_port"]) + " " + str(pkt["ip.totlen"]))
+    #print_pkt_data = (str(pkt["src_ip"]) + " " + str(pkt["src_port"]) + " " +
+    #                  str(pkt["dest_ip"]) + " " + str(pkt["dest_port"]) + " " + str(pkt["ip.totlen"]))
+    print_pkt_data = str(pkt)
     syslog(LOG_DEBUG, print_pkt_data)
 
 
@@ -122,6 +128,7 @@ def pkt_thread(sq, int):
                 break
 
             p_jd = json.loads(p_data)
+            #print_pkt(p_jd)
             if p_jd["ip.protocol"] == 1:
                 continue
             elif "src_port" not in p_jd:
@@ -175,7 +182,7 @@ def pkt_thread(sq, int):
                         continue
             except Exception as e:
                 p_data = {"KeyError": e}
-                syslog(LOG_ERR, f"Must have a KeyError with: {e}")
+                syslog(LOG_ERR, f"Must have a KeyError in packet thread: {e}")
                 continue
             q_data = json.dumps(q_data)
             q_data = q_data + "\n"
@@ -223,7 +230,7 @@ def flow_thread(sq):
             if "orig.ip.protocol" not in f_jd.keys():
                 syslog(LOG_ERR, "Still no data in f_jd")
                 continue
-            if f_jd["orig.ip.protocol"] == 1:
+            if f_jd["orig.ip.protocol"] == 1 or p_jd["orig.ip.protocol"] == 58:
                 continue
             else:
                 try:
@@ -234,7 +241,9 @@ def flow_thread(sq):
                     f_data = {"type": "purge", "flow": {"digest": str(h_data)}}
                 except Exception as e:
                     f_data = {"KeyError": e}
-                    syslog(LOG_ERR, f"Must have a KeyError with: {e}")
+                    syslog(LOG_ERR, f"Must have a KeyError in flow thread: {e}")
+                    print_flow = str(f_jd)
+                    syslog(LOG_ERR, print_flow)
                     continue
                 f_data = json.dumps(f_data)
                 f_data = f_data + "\n"
