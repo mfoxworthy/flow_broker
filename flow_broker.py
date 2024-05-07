@@ -129,10 +129,13 @@ def pkt_thread(sq, int):
 
             p_jd = json.loads(p_data)
             #print_pkt(p_jd)
-            if p_jd["ip.protocol"] == 1:
-                continue
-            elif "src_port" not in p_jd:
-                continue
+            try:
+                if p_jd["ip.protocol"] == 1:
+                    continue
+                elif "src_port" not in p_jd:
+                    continue
+            except Exception as e:
+                print("No IP proto")
             try:
                 if p_jd["oob.out"] != "":
                     p_jd["src_ip"] = int[p_jd["oob.out"]]
